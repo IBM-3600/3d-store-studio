@@ -1,0 +1,480 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum PublishStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// ────────────────────────────────────────────
+// ENUMS
+// ────────────────────────────────────────────
+
+
+enum WorldStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AppStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum EnvironmentType {
+  DEVELOPMENT
+  STAGING
+  PRODUCTION
+}
+
+enum PublishState {
+  DRAFT
+  PUBLISHED
+  PENDING
+  SUCCESS
+  FAILED
+  ROLLED_BACK
+}
+
+enum AssetType {
+  MODEL
+  TEXTURE
+  AUDIO
+  VIDEO
+  HDRI
+  FONT
+}
+
+enum AssetStatus {
+  UPLOADING
+  UPLOADED
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum SceneNodeType {
+  PRODUCT
+  DECORATION
+  LIGHT
+  CAMERA
+  SHELF
+  WALL
+  FLOOR
+  SIGN
+  GROUP
+  SPAWN_POINT
+}
+
+enum InteractionType {
+  NONE
+  OPEN_MODAL
+  REDIRECT
+  ADD_TO_CART
+  PLAY_ANIMATION
+  CUSTOM
+}
+
+enum CommentStatus {
+  OPEN
+  RESOLVED
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  email         String       @unique
+  passwordHash  String
+  role          Role         @default(VIEWER)
+  lastActive    DateTime     @default(now())
+  sessions      Session[]
+  auditLogs     AuditLog[]
+  lockedObjects ObjectLock[]
+  comments      Comment[]
+}
+
+model Session {
+  id            Int   @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  token     String   @unique
+  expiresAt DateTime
+}
+
+model World {
+  id           Int           @id @default(autoincrement())
+  name           String
+  description    String?
+  theme          String? // JSON string for skybox, ambient audio, etc.
+  status         PublishStatus    @default(DRAFT)
+  version        Int              @default(1)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  buildings      Building[]
+  publishHistory PublishVersion[]
+  comments       Comment[]
+}
+
+model Building {
+  id            Int  @id @default(autoincrement())
+  worldId Int
+  world   World   @relation(fields: [worldId], references: [id])
+  name    String
+  floors  Floor[]
+}
+
+model Floor {
+  id           Int   @id @default(autoincrement())
+  buildingId Int
+  building   Building @relation(fields: [buildingId], references: [id])
+  name       String
+  stores     Store[]
+}
+
+model Store {
+  id            Int           @id @default(autoincrement())
+  floorId   Int
+  floor     Floor            @relation(fields: [floorId], references: [id])
+  name      String
+  instances ObjectInstance[]
+  shelves   Shelf[]
+}
+
+model Product {
+  id           Int           @id @default(autoincrement()) // Internal ID
+  shopifyid            Int           @unique // Shopify Product ID
+  sku            String?
+  name           String
+  description    String?
+  price          Float
+  compareAtPrice Float?
+  vendor         String?
+  tags           String[] // Array of strings
+  images         Json // Array of image URLs
+  variants       Json // Array of variant objects
+  inventory      Int              @default(0)
+  modelUrl       String? // GLB/GLTF URL
+  lastSyncedAt   DateTime         @default(now())
+  instances      ObjectInstance[]
+}
+
+model ObjectInstance {
+  id            Int   @id @default(autoincrement())
+  storeId   Int
+  store     Store    @relation(fields: [storeId], references: [id])
+  productId Int?
+  product   Product? @relation(fields: [productId], references: [id])
+  shelfId   Int?
+  shelf     Shelf?   @relation(fields: [shelfId], references: [id])
+
+  // Transform
+  positionX Float
+  positionY Float
+  positionZ Float
+  rotationX Float
+  rotationY Float
+  rotationZ Float
+  scaleX    Float @default(1)
+  scaleY    Float @default(1)
+  scaleZ    Float @default(1)
+
+  // Settings
+  visibility        Boolean @default(true)
+  interactionRadius Float   @default(1.0)
+  customMetadata    Json? // Custom overrides (price, labels)
+
+  parentId Int? // For hierarchy (e.g., product on shelf)
+  children ObjectInstance[] @relation("Hierarchy")
+  parent   ObjectInstance?  @relation("Hierarchy", fields: [parentId], references: [id])
+}
+
+model Shelf {
+  id           Int           @id @default(autoincrement())
+  storeId    Int
+  store      Store            @relation(fields: [storeId], references: [id])
+  name       String
+  dimensions Json // { width, height, depth, levels }
+  instances  ObjectInstance[]
+}
+
+model SyncLog {
+  id            Int   @id @default(autoincrement())
+  type      String // MANUAL, SCHEDULED, WEBHOOK
+  status    String // SUCCESS, FAILED, IN_PROGRESS
+  details   Json?
+  createdAt DateTime @default(now())
+}
+
+model PublishVersion {
+  id           Int   @id @default(autoincrement())
+  worldId     Int
+  world       World    @relation(fields: [worldId], references: [id])
+  version     Int
+  snapshotUrl String // URL to serialized scene JSON/GLB
+  publishedBy String
+  createdAt   DateTime @default(now())
+}
+
+model ObjectLock {
+  id            Int   @id @default(autoincrement())
+  objectId  Int // Instance ID or "SCENE"
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+}
+
+model AuditLog {
+  id            Int   @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  target    String
+  timestamp DateTime @default(now())
+}
+
+model Comment {
+  id           Int    @id @default(autoincrement())
+  worldId    Int
+  world      World     @relation(fields: [worldId], references: [id])
+  objectId   Int// Instance ID or "SCENE"
+  userId     Int
+  user       User      @relation(fields: [userId], references: [id])
+  message    String?
+  position   String?
+  status     String
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+}
+
+// backend/prisma/schema.prisma - Add these fields to existing Asset model
+
+model Asset {
+  id            Int   @id @default(autoincrement())
+  name          String
+  type          String   // MODEL, TEXTURE, AUDIO, HDRI, VIDEO
+  url           String
+
+    // Bucket references
+  bucketKey      String?
+  bucketUrl      String?
+  thumbnailKey   String?
+  thumbnailUrl   String?
+  size          Int
+   // File info
+  fileName       String?
+  fileSize       BigInt?      @default(0)
+  mimeType       String?
+
+  // New fields for 3D asset management
+  description   String?
+  category      String?  // furniture, electronics, decoration, etc.
+  tags          String[] // Array of tags
+  vendor        String?
+  brand         String?
+  
+  // 3D-specific metadata
+  dimensions    Json?    // { width, height, depth } in meters
+  polygonCount  Int?
+  materialCount Int?
+  format        String?  // glb, gltf, fbx, obj
+  
+  // Product linking
+  shopifyId     String?
+  price         Float?
+  sku           String?
+  
+  // NEW: Storage location tracking
+  storageLocation  String   @default("LOCAL")   // "LOCAL" | "S3"
+  s3Key            String?                        // S3 object key
+  s3Url            String?                        // Full S3 public URL
+  uploadedToRemote Boolean  @default(false)       // Flag for batch upload
+
+  // Status
+  status        String   @default("UPLOADED") // UPLOADED, PROCESSING, READY, FAILED
+  uploadedBy    String?
+  uploadedAt    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// Add new StorageSettings model
+model StorageSettings {
+  id           Int   @id @default(autoincrement())
+  provider        String   @default("local")     // "local" | "custom"
+  
+  // Custom CDN Configuration
+  baseUrl         String?                        // e.g., "https://minibucket.example.com/api"
+  apiKey          String?                        // API key or token
+  authType        String   @default("bearer")    // "bearer" | "apikey" | "basic" | "none"
+  authHeader      String   @default("Authorization") // Custom auth header name
+  
+  // Endpoint paths (relative to baseUrl)
+  uploadEndpoint  String   @default("/upload")   // POST endpoint for uploads
+  deleteEndpoint  String   @default("/objects")  // DELETE endpoint pattern
+  listEndpoint    String?                        // Optional: GET endpoint for listing
+  
+  // URL construction
+  publicUrlBase   String?                        // Base URL for public access
+  urlPattern      String   @default("{baseUrl}/{key}") // URL template
+  
+  // Options
+  isActive        Boolean  @default(false)
+  forceHttps      Boolean  @default(true)
+  customHeaders   Json?                          // Additional headers as JSON
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+
+// Registered 3D Store Application
+model Application {
+  id           Int        @id @default(autoincrement())
+  name            String                              // "My Virtual Mall"
+  slug            String        @unique               // "my-virtual-mall"
+  description     String?
+  website         String?                             // https://mystore.com
+  logoUrl         String?
+  
+  // Ownership
+  ownerId           Int
+  // owner         User          @relation(fields: [ownerId], references: [id])
+  sourceName      String?
+  // ─── Simplified Auth ───
+  appSecret        String      @unique    // The shared secret
+  secretCreatedAt  DateTime    @default(now())
+  secretLastUsed   DateTime?
+  version         String?
+
+  // Status
+  status          AppStatus     @default(ACTIVE)
+  
+  // Communication config
+  allowedOrigins  String[]                            // CORS origins
+  webhookSecret   String?                             // For signing webhooks
+  
+  // Relations
+  apiKeys         ApiKey[]
+  environments    AppEnvironment[]
+  webhooks        Webhook[]
+  publishedVersions PublishedAppVersion[]
+  integrationLogs IntegrationLog[]
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+// API Credentials per Application
+model ApiKey {
+  id           Int        @id @default(autoincrement())
+  appId           Int
+  app             Application   @relation(fields: [appId], references: [id])
+  
+  name            String                              // "Production Key", "Dev Key"
+  keyHash         String                              // Hashed API key
+  keyPrefix       String                              // First 8 chars for display
+  lastUsedAt      DateTime?
+  expiresAt       DateTime?
+  isActive        Boolean       @default(true)
+  
+  // Permissions
+  scopes          String[]                            // ["read:scenes", "write:publish", "read:products"]
+  
+  createdAt       DateTime      @default(now())
+  
+  @@index([keyPrefix])
+}
+
+// Environments per Application (dev/staging/prod)
+model AppEnvironment {
+  id           Int        @id @default(autoincrement())
+  appId           Int
+  app             Application   @relation(fields: [appId], references: [id])
+  
+  name            String                              // "Production", "Staging"
+  type            EnvironmentType
+  baseUrl         String?                             // https://mystore.com
+  apiEndpoint     String?                             // https://api.mystore.com
+  
+  // Current published version for this environment
+  currentVersionId String?
+  
+  isActive        Boolean       @default(true)
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@unique([appId, type])
+}
+
+// Webhook endpoints for the app
+model Webhook {
+  id           Int        @id @default(autoincrement())
+  appId           Int
+  app             Application   @relation(fields: [appId], references: [id])
+  
+  url             String                              // https://mystore.com/webhooks/studio
+  events          String[]                            // ["scene.published", "product.updated"]
+  secret          String                              // Signing secret
+  isActive        Boolean       @default(true)
+  lastTriggeredAt DateTime?
+  lastStatus      Int?                                // HTTP status of last delivery
+  
+  createdAt       DateTime      @default(now())
+}
+
+// Published versions per app/environment
+model PublishedAppVersion {
+  id           Int        @id @default(autoincrement())
+  appId           Int
+  app             Application   @relation(fields: [appId], references: [id])
+  
+  worldid           Int                              // Which world was published
+  environmentId   String                              // Which environment
+  
+  version         Int
+  sceneUrl        String                              // URL to scene JSON
+  sceneHash       String                              // Integrity hash
+  
+  state           PublishState  @default(PUBLISHED)
+  publishedBy     String
+  
+  metadata        Json?                               // Additional publish metadata
+  
+  createdAt       DateTime      @default(now())
+  
+  @@index([appId, environmentId])
+}
+
+// Integration activity logs
+model IntegrationLog {
+  id           Int        @id @default(autoincrement())
+  appId           Int
+  app             Application   @relation(fields: [appId], references: [id])
+  
+  action          String                              // "scene.fetched", "webhook.sent", "api.called"
+  endpoint        String?
+  method          String?
+  statusCode      Int?
+  ipAddress       String?
+  userAgent       String?
+  metadata        Json?
+  
+  createdAt       DateTime      @default(now())
+  
+  @@index([appId, createdAt])
+}

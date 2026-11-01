@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Professional 3D Store Studio - Visual Editor for Virtual Shopping Environments">
+  <title>3D Store Studio</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <!-- <link rel="stylesheet" href="./src/ui/Layout.css"> -->
+  <link rel="stylesheet" href="./src/ui/Accessibility.css">
+  <!-- <script type="importmap">
+    {
+       "imports":{
+                "socket.io-client": "./modules/socket.io/socket.io.js",
+                "three": "./modules/three.module.js",
+                "three/examples/": "https://unpkg.com/three@0.180.0/examples/"
+            }
+    }
+  </script> -->
+
+   <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    html {
+      height: 100%;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1e1e1e;
+      color: #ccc;
+      /* REMOVED: overflow: hidden */
+      min-height: 100%;
+    }
+    
+    #app {
+      width: 100%;
+      min-height: 100vh;
+      /* REMOVED: height: 100vh */
+    }
+    
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #1e1e1e;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #3e3e42;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #858585;
+    }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <div id="app"></div>
+  <!-- <div id="app"> -->
+    <!-- Toolbar -->
+    <!-- <studio-toolbar class="toolbar"></studio-toolbar> -->
+    
+    <!-- Left Panel -->
+    <!-- <div class="left-panel">
+      <div class="panel-tabs">
+        <div class="panel-tab active" data-tab="outliner">Outliner</div>
+        <div class="panel-tab" data-tab="assets">Assets</div>
+      </div>
+      <div class="panel-content">
+        <studio-outliner id="outliner-panel"></studio-outliner>
+        <studio-asset-browser id="assets-panel" style="display: none;"></studio-asset-browser>
+      </div>
+    </div> -->
+    
+    <!-- Viewport -->
+    <!-- <div class="viewport" id="main-content">
+      <div id="three-canvas"></div>
+    </div>
+     -->
+    <!-- Right Panel -->
+    <!-- <div class="right-panel">
+      <studio-inspector id="inspector-panel"></studio-inspector>
+    </div> -->
+    
+    <!-- Status Bar -->
+    <!-- <div class="statusbar">
+      <div class="statusbar-item">
+        <span id="status-objects">Objects: 0</span>
+      </div>
+      <div class="statusbar-item">
+        <span id="status-fps">FPS: 60</span>
+      </div>
+      <div class="statusbar-item">
+        <span id="status-sync">Sync: Ready</span>
+      </div>
+      <div class="statusbar-item">
+        <span id="status-user">User: Guest</span>
+      </div>
+    </div> -->
+  <!-- </div> -->
+  
+  <!-- Modal Container -->
+  <!-- <div id="modal-container"></div> -->
+  
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
